@@ -28,7 +28,6 @@ from constructs import Construct
 from athena_analyzer.infrastructure import AthenaAnalyzer
 from orchestrator_step_function.infrastructure import OrchestratorStepFunction
 from pod_metadata_extractor.infrastructure import PodMetaDataExtractor
-from vpc_flow_logs.infrastructure import VPCFlowLogs
 
 EVENT_BRIDGE_SCHEDULED_RULE_FREQUENCY = Duration.minutes(60)
 
@@ -38,7 +37,8 @@ class EksInterAzVisibility(Stack):
         super().__init__(scope, id_, **kwargs)
 
         eks_cluster = self.__get_eks_cluster_from_parameter()
-        eks_vpc = self.__get_vpc_from_parameter()
+        # eks_vpc = self.__get_vpc_from_parameter()
+        flow_logs_bucket = self.__get_flow_logs_bucket_from_parameter()
 
         server_access_logs_bucket = self.create_server_access_logs_bucket()
 
@@ -49,18 +49,11 @@ class EksInterAzVisibility(Stack):
             server_access_logs_bucket=server_access_logs_bucket,
         )
 
-        vpc_flow_logs = VPCFlowLogs(
-            scope=self,
-            id="FlowLogs",
-            vpc=eks_vpc,
-            server_access_logs_bucket=server_access_logs_bucket,
-        )
-
         athena_analyzer = AthenaAnalyzer(
             scope=self,
             id="AthenaAnalyzer",
             pod_metadata_extractor_bucket=pod_metadata_extractor.bucket,
-            flow_logs_bucket=vpc_flow_logs.bucket,
+            flow_logs_bucket=flow_logs_bucket,
             frequency=EVENT_BRIDGE_SCHEDULED_RULE_FREQUENCY,
             server_access_logs_bucket=server_access_logs_bucket,
         )
@@ -121,6 +114,16 @@ class EksInterAzVisibility(Stack):
         )
 
         return eks_vpc
+
+    def __get_flow_logs_bucket_from_parameter(self):
+        bucket = CfnParameter(
+            self,
+            "flowLogsBucket",
+            type="String",
+            description="The name of the existing S3 bucket containing flow logs",
+        )
+
+        return bucket
 
     def __get_eks_cluster_from_parameter(self):
         eks_cluster_name = CfnParameter(
