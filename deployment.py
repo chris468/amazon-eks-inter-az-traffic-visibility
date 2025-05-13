@@ -123,7 +123,9 @@ class EksInterAzVisibility(Stack):
             description="The name of the existing S3 bucket containing flow logs",
         )
 
-        return bucket
+        return s3.Bucket.from_bucket_name(
+            self, "flow_logs_bucket", bucket.value_as_string
+        )
 
     def __get_eks_cluster_from_parameter(self):
         eks_cluster_name = CfnParameter(
